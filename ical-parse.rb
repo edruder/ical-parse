@@ -1,14 +1,6 @@
 #!/usr/bin/env ruby
 
 require 'awesome_print'
-#require 'minitest/autorun'
-
-file = ARGV[0]
-
-unless File.exist?(file)
-  puts "File #{file} doesn't exist!"
-  exit 1
-end
 
 class Element
   BEGIN_REGEXP = /^BEGIN:([A-Z]+)\s*$/
@@ -72,29 +64,34 @@ class Element
   end
 end
 
-File.open(file, "r") do |f|
-  root = Element.new(f, f.gets)
-  ap root.parse
+class IcalParser
+  def self.parse(filename)
+    unless filename && File.exist?(filename)
+      puts "File #{filename} doesn't exist!"
+      exit 1
+    end
+
+    File.open(filename, "r") do |f|
+      root = Element.new(f, f.gets)
+      @parsed = root.parse
+    end
+
+    clean_exdates
+
+    ap @parsed
+  end
+
+  private
+
+  def self.clean_exdates
+    @parsed["VCALENDAR"]["VEVENT"].each do |vevent|
+      next unless vevent["EXDATE;VALUE=DATE"]
+
+      dates = vevent["EXDATE;VALUE=DATE"]
+      dates.sort!
+      vevent["EXDATE;VALUE=DATE"] = dates.last
+    end
+  end
 end
 
-#require 'optparse'
-
-#options = {}
-#
-#option_parser = OptionParser.new do |opts|
-#  # Create a switch
-#  opts.on("-i", "--iteration") do
-#    options[:iteration] = true
-#  end
-#  # Create a flag
-#  opts.on("-u USER") do |user|'
-#    options[:user] = user
-#  end
-#  opts.on("-p PASSWORD") do |password|
-#    options[:password] = password
-#  end
-#end
-#
-#option_parser.parse!
-#puts options.inspect
-
+IcalParser.parse ARGV[0]
