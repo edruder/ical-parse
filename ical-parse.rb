@@ -77,6 +77,7 @@ class IcalParser
     end
 
     clean_exdates
+    clean_rrules
 
     ap @parsed
   end
@@ -90,6 +91,15 @@ class IcalParser
       dates = vevent["EXDATE;VALUE=DATE"]
       dates.sort!
       vevent["EXDATE;VALUE=DATE"] = dates.last
+    end
+  end
+
+  def self.clean_rrules
+    @parsed["VCALENDAR"]["VEVENT"].each do |vevent|
+      next unless vevent["DTSTART;VALUE=DATE"] && vevent["DTEND;VALUE=DATE"]
+
+      vevent["RRULE"].sub!(/;UNTIL=\d{8}/, "")
+      vevent["RRULE"].sub!(/;BYMONTH=\d{1,2}/, "")
     end
   end
 end
