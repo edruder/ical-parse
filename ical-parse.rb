@@ -12,7 +12,8 @@ end
 
 class Element
   BEGIN_REGEXP = /^BEGIN:([A-Z]+)\s*$/
-  ATTR_REGEXP = /^(.+):(.+)$/
+  ATTR_REGEXP = /^(.+?):(.+)$/
+  DESCRIPTION_REGEXP = /^DESCRIPTION:(.*)$/
 
   def initialize(io, begin_line)
     raise "Expected a BEGIN line!" unless begin_line =~ BEGIN_REGEXP
@@ -26,6 +27,8 @@ class Element
     @body = {}
 
     @io.each do |line|
+      next if description?(line)
+
       line.strip!
       case line
       when /^END:#{@name}$/
@@ -36,13 +39,36 @@ class Element
         @body[el_key] ||= []
         @body[el_key] << inner[el_key]
       when ATTR_REGEXP
-        @body[$1] = $2
+        if @body[$1]
+          @body[$1] = [@body[$1]] unless @body[$1].is_a?(Array)
+          @body[$1] << $2
+        else
+          @body[$1] = $2
+        end
       else
         raise "Unexpected line: '#{line}'!"
       end
     end
 
     { @name => @body }
+  end
+
+  private
+
+  def description?(line)
+    return false unless @parsing_description || description_match = (line =~ DESCRIPTION_REGEXP)
+
+    if @parsing_description
+      if line =~ /^ /
+        @parsing_description << line
+      else
+        @parsing_description = @parsing_description[0] if @parsing_description.size == 1
+        @body["DESCRIPTION"] = @parsing_description
+        @parsing_description = false
+      end
+    else
+      @parsing_description = [$1]
+    end
   end
 end
 
