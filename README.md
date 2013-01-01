@@ -17,9 +17,7 @@ script removes all of them
 
 ### Usage ###
 
-    require "ap"
-    ap object, options = {}
-
+    ./ical-parse.rb cal.ics newcal.ics
 
 ### License ###
 Copyright (c) 2012 Edward G. Ruder
