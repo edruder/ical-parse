@@ -7,26 +7,29 @@ class Element
   ATTR_REGEXP = /^(.+?):(.+)$/
   DESCRIPTION_REGEXP = /^DESCRIPTION:(.*)$/
 
-  def initialize(io, begin_line)
+  def initialize(io, begin_line, output_io = nil)
     raise "Expected a BEGIN line!" unless begin_line =~ BEGIN_REGEXP
     @name = $1
 
     @io = io
     @begin_line = begin_line
+    @output_io = output_io
   end
 
   def parse
     @body = {}
 
     @io.each do |line|
+      dump(line)
+
       next if description?(line)
 
-      line.strip!
+      line.rstrip!
       case line
       when /^END:#{@name}$/
         break
       when BEGIN_REGEXP
-        inner = Element.new(@io, line).parse
+        inner = Element.new(@io, line, @output_io).parse
         el_key = inner.keys[0]
         @body[el_key] ||= []
         @body[el_key] << inner[el_key]
@@ -62,18 +65,34 @@ class Element
       @parsing_description = [$1]
     end
   end
+
+  def dump(line)
+    return unless @output_io
+
+    @output_io.puts line
+  end
 end
 
 class IcalParser
-  def self.parse(filename)
-    unless filename && File.exist?(filename)
-      puts "File #{filename} doesn't exist!"
+  def self.parse(in_filename, out_filename = nil)
+    unless in_filename && File.exist?(in_filename)
+      puts "File #{in_filename} doesn't exist!"
       exit 1
     end
 
-    File.open(filename, "r") do |f|
-      root = Element.new(f, f.gets)
+    if out_filename
+      out = File.open(out_filename, "w")
+    end
+
+    File.open(in_filename, "r") do |f|
+      first_line = f.gets
+      out.puts first_line if out
+      root = Element.new(f, first_line, out)
       @parsed = root.parse
+    end
+
+    if out_filename
+      out.close
     end
 
     clean_exdates
@@ -104,4 +123,4 @@ class IcalParser
   end
 end
 
-IcalParser.parse ARGV[0]
+IcalParser.parse ARGV[0], ARGV[1]
